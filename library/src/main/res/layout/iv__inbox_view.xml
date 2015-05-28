@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#88000000"
+        >
+
+    <FrameLayout
+            android:id="@+id/iv__inbox_view_content_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            />
+
+    <RelativeLayout
+            android:id="@+id/iv__inbox_view_top_view"
+            android:layout_width="match_parent" android:layout_height="100dp"
+            >
+        <ImageView
+                android:id="@+id/iv__inbox_view_top_view_shadow_iv"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                android:src="@drawable/iv__shape_gradient_top"
+                />
+
+    </RelativeLayout>
+
+    <RelativeLayout
+            android:id="@+id/iv__inbox_view_bottom_view"
+            android:layout_width="match_parent" android:layout_height="100dp"
+            android:layout_alignParentBottom="true"
+            tools:minHeight="100dp"
+            >
+        <ImageView
+                android:id="@+id/iv__inbox_view_bottom_view_shadow_iv"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                android:src="@drawable/iv__shape_gradient_bottom"
+                />
+
+    </RelativeLayout>
+
+
+</RelativeLayout>

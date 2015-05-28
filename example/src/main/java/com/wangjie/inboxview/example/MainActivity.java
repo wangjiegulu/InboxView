@@ -33,11 +33,9 @@ public class MainActivity extends AIActionBarActivity {
     @Override
     @AIItemClick({R.id.activity_main_lv})
     public void onItemClickCallbackSample(AdapterView<?> parent, View view, int position, long id) {
-//        showToastMessage("position " + position);
         int firstPos = lv.getFirstVisiblePosition();
         int lastPos = lv.getLastVisiblePosition();
         InboxCompat.startInboxView(this, new InboxViewText(context), 1f * (position - firstPos) / (lastPos - firstPos));
-
 
     }
 

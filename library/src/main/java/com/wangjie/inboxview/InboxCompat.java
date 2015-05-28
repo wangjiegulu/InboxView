@@ -31,6 +31,11 @@ public class InboxCompat {
         topPreviewHeight = topPreviewHeight <= 0 ? leastHeight : topPreviewHeight;
         topPreviewHeight = topPreviewHeight >= bitmapHeight ? bitmapHeight - leastHeight : topPreviewHeight;
 
+//        int[] pixels = new int[bitmap.getWidth() * bitmap.getHeight()];
+//        bitmap.getPixels(pixels, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), topPreviewHeight);
+//        bitmap.getPixels(pixels, bitmap.getWidth() * topPreviewHeight, bitmap.getWidth(), 0, topPreviewHeight, bitmap.getWidth(), (bitmapHeight - topPreviewHeight));
+//        Bitmap.createBitmap(pixels, 0, bitmap.getWidth(), null);
+
         inboxView.setTopPreviewHeight(topPreviewHeight);
         inboxView.setBottomPreviewHeight(bitmapHeight - topPreviewHeight);
         new InboxPopContainer(activity, inboxView).showAtLocation(rootView, Gravity.CENTER, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);

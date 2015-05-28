@@ -3,18 +3,19 @@ package com.wangjie.inboxview;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import com.nineoldandroids.animation.Animator;
-import com.nineoldandroids.animation.AnimatorListenerAdapter;
-import com.nineoldandroids.animation.AnimatorSet;
-import com.nineoldandroids.animation.ValueAnimator;
+import android.widget.RelativeLayout;
+import com.nineoldandroids.animation.*;
 import com.wangjie.inboxview.util.IVUtil;
 
 /**
@@ -23,6 +24,8 @@ import com.wangjie.inboxview.util.IVUtil;
  * Date: 5/27/15.
  */
 public abstract class InboxView extends LinearLayout {
+    private static final long DEFAULT_ANIMATION_DURATION = 200l;
+
     public interface OnInboxViewListener {
         void onInboxViewClosed();
     }
@@ -40,29 +43,31 @@ public abstract class InboxView extends LinearLayout {
         init();
     }
 
-    public InboxView(Context context, AttributeSet attrs) {
+    private InboxView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-    public InboxView(Context context, AttributeSet attrs, int defStyleAttr) {
+    private InboxView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public InboxView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+    private InboxView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         init();
     }
 
     protected Bitmap previewBm;
-    private int previewBmHeight;
-    //    private int previewBmHeightHalf;
-    private ImageView topIv;
-    private ImageView bottomIv;
-    private View rootView;
+
+    private View topVg;
+    private ImageView topShadowIv;
+    private View bottomVg;
+    private ImageView bottomShadowIv;
+
+    private ViewGroup contentVg;
 
     private int topPreviewHeight;
     private int bottomPreviewHeight;
@@ -77,13 +82,21 @@ public abstract class InboxView extends LinearLayout {
 
     protected void setPreviewBm(Bitmap previewBm) {
         this.previewBm = previewBm;
-        previewBmHeight = previewBm.getHeight();
-//        previewBmHeightHalf = previewBmHeight / 2;
     }
 
 
     private void init() {
         this.setOrientation(VERTICAL);
+        this.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        View view = View.inflate(getContext(), R.layout.iv__inbox_view, null);
+        view.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        this.addView(view);
+
+        topVg = findViewById(R.id.iv__inbox_view_top_view);
+        topShadowIv = (ImageView) findViewById(R.id.iv__inbox_view_top_view_shadow_iv);
+        bottomVg = findViewById(R.id.iv__inbox_view_bottom_view);
+        bottomShadowIv = (ImageView) findViewById(R.id.iv__inbox_view_bottom_view_shadow_iv);
+
     }
 
     protected void setContentView(int resId) {
@@ -92,71 +105,46 @@ public abstract class InboxView extends LinearLayout {
             return;
         }
         setContentView(View.inflate(getContext(), resId, null));
-
-        addPreviewViews();
-
     }
 
-    private void addPreviewViews() {
-        topIv = new ImageView(getContext());
-        LayoutParams topLp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    private void setContentView(View view) {
+        contentVg = ((ViewGroup) findViewById(R.id.iv__inbox_view_content_view));
+        contentVg.removeAllViews();
+        view.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        contentVg.addView(view);
+
+        IVUtil.setBackgroundDrawable(topVg, new BitmapDrawable(getResources(), Bitmap.createBitmap(previewBm, 0, 0, previewBm.getWidth(), topPreviewHeight)));
+        IVUtil.setBackgroundDrawable(bottomVg, new BitmapDrawable(getResources(), Bitmap.createBitmap(previewBm, 0, topPreviewHeight, previewBm.getWidth(), bottomPreviewHeight)));
+
+        RelativeLayout.LayoutParams topLp = (RelativeLayout.LayoutParams) topVg.getLayoutParams();
+        topLp.height = topPreviewHeight;
         topLp.topMargin = -topPreviewHeight;
-        topIv.setLayoutParams(topLp);
-        topIv.setImageBitmap(Bitmap.createBitmap(previewBm, 0, 0, previewBm.getWidth(), topPreviewHeight));
-        IVUtil.changeBrightness(topIv, -50f);
-        this.addView(topIv, 0);
+        topVg.setLayoutParams(topLp);
 
-        bottomIv = new ImageView(getContext());
-        LayoutParams bottomLp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-//        bottomLp.topMargin = previewBm.getHeight() / 2;
-//        bottomLp.bottomMargin = -previewBmHeightHalf;
-        bottomIv.setImageBitmap(Bitmap.createBitmap(previewBm, 0, topPreviewHeight, previewBm.getWidth(), bottomPreviewHeight));
-        bottomIv.setLayoutParams(bottomLp);
-        IVUtil.changeBrightness(bottomIv, -50f);
-        this.addView(bottomIv);
+        RelativeLayout.LayoutParams bottomLp = (RelativeLayout.LayoutParams) bottomVg.getLayoutParams();
+        bottomLp.height = bottomPreviewHeight;
+        bottomLp.bottomMargin = -bottomPreviewHeight;
+        bottomVg.setLayoutParams(bottomLp);
+
 
     }
 
-
-    protected void setContentView(View view) {
-        this.rootView = view;
-        LayoutParams lp = (LayoutParams) this.rootView.getLayoutParams();
-        if (null == lp) {
-            lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        }
-        this.rootView.setLayoutParams(lp);
-        this.addView(this.rootView);
-    }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         if (w > 0 && h > 0) {
-            LayoutParams lp = (LayoutParams) this.rootView.getLayoutParams();
-            if (null == lp) {
-                lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-            }
-            // 固定大小
-            lp.width = rootView.getMeasuredWidth();
-            lp.height = rootView.getMeasuredHeight();
-            this.rootView.setLayoutParams(lp);
-
-            LayoutParams bottomLp = (LayoutParams) bottomIv.getLayoutParams();
-            bottomLp.width = topIv.getMeasuredWidth();
-            bottomLp.height = bottomPreviewHeight;
-            bottomIv.setLayoutParams(bottomLp);
-
             openRootView();
         }
     }
 
+    private boolean isInterceptEvent = true;
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        // 如果设置了拦截所有move事件，即interceptAllMoveEvents为true
-        if (MotionEvent.ACTION_MOVE == ev.getAction()) {
-            return true;
-        }
-        return true;
+//        if (MotionEvent.ACTION_MOVE == ev.getAction()) {
+//            return true;
+//        }
+        return isInterceptEvent;
     }
 
     private int status = STATUS_NORMAL;
@@ -167,12 +155,27 @@ public abstract class InboxView extends LinearLayout {
 
     private float startY;
 
+    /**
+     * 当前的模式
+     */
+    private int mode = MODE_NONE;
+    private static final int MODE_NONE = 0;
+    /**
+     * 下拉模式
+     */
+    private static final int MODE_TOP = 1;
+    /**
+     * 上拉模式
+     */
+    private static final int MODE_BOTTOM = 2;
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
 //        Log.d(TAG, "event: " + event);
         boolean isBottom = isBottom();
         boolean isTop = isTop();
         if (!isBottom && !isTop) {
+            isInterceptEvent = false;
             return super.onTouchEvent(event);
         }
         switch (event.getAction()) {
@@ -182,20 +185,21 @@ public abstract class InboxView extends LinearLayout {
             case MotionEvent.ACTION_MOVE:
                 float currentY = event.getY();
                 int halfDeltaY = (int) ((currentY - startY) / 3);
-                if ((currentY > startY && isTop) // 向下拖动
-                        ||
-                        (currentY < startY && isBottom) // 向上拖动
-                        ) {
-                    int expectTopMargin = halfDeltaY + ((LayoutParams) topIv.getLayoutParams()).topMargin;
-                    setTopMargin(topIv, expectTopMargin);
-                    // -1/3 ~ -2/3 高度则到达下拉的高度
-                    if (/*expectTopMargin < -1 / 3f * previewBmHeightHalf && */expectTopMargin > -2 / 3f * topPreviewHeight) {
-                        status = STATUS_TOP_ARRIVED;
-                    } else if (expectTopMargin < -(topPreviewHeight + 1 / 3f * bottomPreviewHeight)/* && expectTopMargin > -4 / 3f * previewBmHeightHalf*/) { // -6/3 ~ -4/3 则到达上拉的高度
-                        status = STATUS_BOTTOM_ARRIVED;
+
+                if (MODE_NONE == mode) {
+                    if (currentY > startY && isTop) { // 向下拖动
+                        mode = MODE_TOP;
+                        changeTopPos(halfDeltaY);
+                    } else if (currentY < startY && isBottom) { // 向上拖动
+                        mode = MODE_BOTTOM;
+                        changeBottomPos(halfDeltaY);
                     } else {
-                        status = STATUS_NOT_ARRIVED;
+                        status = STATUS_NORMAL;
                     }
+                } else if (MODE_TOP == mode) {
+                    changeTopPos(halfDeltaY);
+                } else if (MODE_BOTTOM == mode) {
+                    changeBottomPos(halfDeltaY);
                 }
 
                 startY = currentY;
@@ -210,6 +214,7 @@ public abstract class InboxView extends LinearLayout {
                 } else { // 没有到达
                     resetAnimator();
                 }
+                mode = MODE_NONE;
                 break;
             default:
                 break;
@@ -218,19 +223,47 @@ public abstract class InboxView extends LinearLayout {
         return true;
     }
 
+    private void changeBottomPos(int halfDeltaY) {
+        int expectBottomMargin = -halfDeltaY + ((RelativeLayout.LayoutParams) bottomVg.getLayoutParams()).bottomMargin;
+        setBottomMargin(bottomVg, expectBottomMargin);
+        setTopMargin(contentVg, halfDeltaY + ((RelativeLayout.LayoutParams) contentVg.getLayoutParams()).topMargin);
+
+        // -6/3 ~ -4/3 则到达上拉的高度
+//        if (expectBottomMargin > -2 / 3f * bottomPreviewHeight) {
+        if (expectBottomMargin > -(bottomPreviewHeight - IVUtil.dip2px(getContext(), 100))) {
+            status = STATUS_BOTTOM_ARRIVED;
+        } else {
+            status = STATUS_NOT_ARRIVED;
+        }
+    }
+
+    private void changeTopPos(int halfDeltaY) {
+        int expectTopMargin = halfDeltaY + ((RelativeLayout.LayoutParams) topVg.getLayoutParams()).topMargin;
+        setTopMargin(topVg, expectTopMargin);
+        setTopMargin(contentVg, halfDeltaY + ((RelativeLayout.LayoutParams) contentVg.getLayoutParams()).topMargin);
+
+        // -1/3 ~ -2/3 高度则到达下拉的高度
+//        if (expectTopMargin > -2 / 3f * topPreviewHeight) {
+        if (expectTopMargin > -(topPreviewHeight - IVUtil.dip2px(getContext(), 100))) {
+            status = STATUS_TOP_ARRIVED;
+        } else {
+            status = STATUS_NOT_ARRIVED;
+        }
+    }
+
     private void setTopMargin(View view, int topMargin) {
-        LayoutParams lp = (LayoutParams) view.getLayoutParams();
+        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) view.getLayoutParams();
         if (null == lp) {
-            lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         lp.topMargin = topMargin;
         view.setLayoutParams(lp);
     }
 
     private void setBottomMargin(View view, int bottomMargin) {
-        LayoutParams lp = (LayoutParams) view.getLayoutParams();
+        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) view.getLayoutParams();
         if (null == lp) {
-            lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         lp.bottomMargin = bottomMargin;
         view.setLayoutParams(lp);
@@ -256,78 +289,84 @@ public abstract class InboxView extends LinearLayout {
 //        ABIOUtil.recycleBitmap(previewBm);
     }
 
-    private ValueAnimator topMarginAnimator = new ValueAnimator();
+
+    /**
+     * **************************************** 动画 待优化 ***************************************
+     */
 
     private void resetAnimator() {
-        getResetAnimator().start();
-    }
-
-    private ValueAnimator getResetAnimator() {
-        LayoutParams lp = (LayoutParams) topIv.getLayoutParams();
-        topMarginAnimator.setIntValues(lp.topMargin, -topPreviewHeight);
-        topMarginAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        ValueAnimator topAnimator = ValueAnimator.ofInt(((RelativeLayout.LayoutParams) topVg.getLayoutParams()).topMargin, -topPreviewHeight);
+        topAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 int value = (int) animation.getAnimatedValue();
-                LayoutParams lp = (LayoutParams) topIv.getLayoutParams();
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) topVg.getLayoutParams();
                 lp.topMargin = value;
-                topIv.setLayoutParams(lp);
+                topVg.setLayoutParams(lp);
             }
         });
-        topMarginAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                super.onAnimationEnd(animation);
-                status = STATUS_NORMAL;
-            }
-        });
-        topMarginAnimator.setDuration(300);
-        return topMarginAnimator;
-    }
 
-    private ValueAnimator rootViewParamLayoutAnimator = new ValueAnimator();
-    private ValueAnimator brightnessAnimator = new ValueAnimator();
+        ValueAnimator bottomAnimator = ValueAnimator.ofInt(((RelativeLayout.LayoutParams) bottomVg.getLayoutParams()).bottomMargin, -bottomPreviewHeight);
+        bottomAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int value = (int) animation.getAnimatedValue();
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) bottomVg.getLayoutParams();
+                lp.bottomMargin = value;
+                bottomVg.setLayoutParams(lp);
+            }
+        });
+
+        ValueAnimator contentAnimator = ValueAnimator.ofInt(((RelativeLayout.LayoutParams) contentVg.getLayoutParams()).topMargin, 0);
+        contentAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int value = (int) animation.getAnimatedValue();
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) contentVg.getLayoutParams();
+                lp.topMargin = value;
+                contentVg.setLayoutParams(lp);
+            }
+        });
+
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(topAnimator, bottomAnimator, contentAnimator);
+        animatorSet.setDuration(DEFAULT_ANIMATION_DURATION);
+        animatorSet.start();
+    }
 
     /**
      * 关闭rootView
      */
     private void closeRootView() {
-        int height = rootView.getMeasuredHeight();
-        rootViewParamLayoutAnimator.setIntValues(height, 0);
-        rootViewParamLayoutAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        ValueAnimator topAnimator = ValueAnimator.ofInt(((RelativeLayout.LayoutParams) topVg.getLayoutParams()).topMargin, 0);
+        topAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 int value = (int) animation.getAnimatedValue();
-                LayoutParams lp = (LayoutParams) rootView.getLayoutParams();
-                lp.height = value;
-                rootView.setLayoutParams(lp);
-            }
-        });
-
-        LayoutParams lp = (LayoutParams) topIv.getLayoutParams();
-        topMarginAnimator.setIntValues(lp.topMargin, 0);
-        topMarginAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                int value = (int) animation.getAnimatedValue();
-                LayoutParams lp = (LayoutParams) topIv.getLayoutParams();
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) topVg.getLayoutParams();
                 lp.topMargin = value;
-                topIv.setLayoutParams(lp);
+                topVg.setLayoutParams(lp);
             }
         });
 
-        brightnessAnimator.setFloatValues(-50f, 0);
-        brightnessAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        ValueAnimator bottomAnimator = ValueAnimator.ofInt(((RelativeLayout.LayoutParams) bottomVg.getLayoutParams()).bottomMargin, 0);
+        bottomAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                float value = (float) animation.getAnimatedValue();
-                IVUtil.changeBrightness(bottomIv, value);
-                IVUtil.changeBrightness(topIv, value);
+                int value = (int) animation.getAnimatedValue();
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) bottomVg.getLayoutParams();
+                lp.bottomMargin = value;
+                bottomVg.setLayoutParams(lp);
             }
         });
 
+        ObjectAnimator topShadowAnimator = ObjectAnimator.ofFloat(topShadowIv, "alpha", 1f, 0f);
+        ObjectAnimator bottomShadowAnimator = ObjectAnimator.ofFloat(bottomShadowIv, "alpha", 1f, 0f);
 
         AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(topAnimator, bottomAnimator, topShadowAnimator, bottomShadowAnimator);
+        animatorSet.setDuration(DEFAULT_ANIMATION_DURATION);
+        animatorSet.setInterpolator(new DecelerateInterpolator());
         animatorSet.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
@@ -337,8 +376,6 @@ public abstract class InboxView extends LinearLayout {
                 }
             }
         });
-        animatorSet.setDuration(300);
-        animatorSet.playTogether(rootViewParamLayoutAnimator, topMarginAnimator, brightnessAnimator);
         animatorSet.start();
     }
 
@@ -347,44 +384,35 @@ public abstract class InboxView extends LinearLayout {
      * 打开RootView
      */
     private void openRootView() {
-        int height = rootView.getMeasuredHeight();
-        rootViewParamLayoutAnimator.setIntValues(0, height);
-        rootViewParamLayoutAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        ValueAnimator topAnimator = ValueAnimator.ofInt(0, -topPreviewHeight);
+        topAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 int value = (int) animation.getAnimatedValue();
-                LayoutParams lp = (LayoutParams) rootView.getLayoutParams();
-                lp.height = value;
-                rootView.setLayoutParams(lp);
-            }
-        });
-
-        LayoutParams lp = (LayoutParams) topIv.getLayoutParams();
-        topMarginAnimator.setIntValues(0, lp.topMargin);
-        topMarginAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                int value = (int) animation.getAnimatedValue();
-                LayoutParams lp = (LayoutParams) topIv.getLayoutParams();
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) topVg.getLayoutParams();
                 lp.topMargin = value;
-                topIv.setLayoutParams(lp);
+                topVg.setLayoutParams(lp);
             }
         });
 
-        brightnessAnimator.setFloatValues(0, -50f);
-        brightnessAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        ValueAnimator bottomAnimator = ValueAnimator.ofInt(0, -bottomPreviewHeight);
+        bottomAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                float value = (float) animation.getAnimatedValue();
-                IVUtil.changeBrightness(bottomIv, value);
-                IVUtil.changeBrightness(topIv, value);
+                int value = (int) animation.getAnimatedValue();
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) bottomVg.getLayoutParams();
+                lp.bottomMargin = value;
+                bottomVg.setLayoutParams(lp);
             }
         });
 
+        ObjectAnimator topShadowAnimator = ObjectAnimator.ofFloat(topShadowIv, "alpha", 0f, 1f);
+        ObjectAnimator bottomShadowAnimator = ObjectAnimator.ofFloat(bottomShadowIv, "alpha", 0f, 1f);
 
         AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.setDuration(300);
-        animatorSet.playTogether(rootViewParamLayoutAnimator, topMarginAnimator, brightnessAnimator);
+        animatorSet.playTogether(topAnimator, bottomAnimator, topShadowAnimator, bottomShadowAnimator);
+        animatorSet.setDuration(DEFAULT_ANIMATION_DURATION);
+        animatorSet.setInterpolator(new DecelerateInterpolator(0.4f));
         animatorSet.start();
     }
 
